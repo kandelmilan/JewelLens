@@ -96,7 +96,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Hero(
-                          tag: "logo",
+                          tag: "logo_onboarding",
                           child: Image.asset(
                             page["image"] as String,
                             height: 260,

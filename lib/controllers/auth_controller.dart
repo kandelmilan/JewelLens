@@ -6,6 +6,7 @@ import 'package:jewellens/models/register_model.dart';
 import 'package:jewellens/services/auth_service.dart';
 import 'package:jewellens/views/auth_view/login_view.dart';
 import 'package:jewellens/views/landing_page.dart';
+import 'package:jewellens/views/main_nav_view.dart';
 
 class AuthController extends GetxController {
   var isLoading = false.obs;
@@ -66,7 +67,7 @@ class AuthController extends GetxController {
         email.clear();
         password.clear();
         loginFormKey.currentState?.reset();
-        Get.offAll(() => const HomeView());
+        Get.offAll(() => const MainNavView());
       } else {
         Get.snackbar(
           "Error",

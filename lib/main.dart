@@ -4,6 +4,7 @@ import 'package:jewellens/bindings/controller_binding.dart';
 import 'package:jewellens/views/auth_view/login_view.dart';
 import 'package:jewellens/views/auth_view/register_view.dart';
 import 'package:jewellens/views/landing_page.dart';
+import 'package:jewellens/views/main_nav_view.dart';
 import 'package:jewellens/views/onboarding/onboarding_view.dart';
 import 'package:jewellens/views/splash/splash_view.dart';
 import 'package:requests_inspector/requests_inspector.dart';
@@ -21,7 +22,7 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       title: 'Flutter Demo',
       initialBinding: ControllerBinding(),
-      home: const HomeView(),
+      home: const MainNavView(),
     );
   }
 }
