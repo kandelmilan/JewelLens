@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jewellens/controllers/Product/product_by_id_or_slug_controller.dart';
+import 'package:jewellens/controllers/Product/related_product_controller.dart';
+import 'package:jewellens/models/Category/categories_model.dart';
+import 'package:jewellens/models/Product/related_product_model.dart' as related;
 
 class ProductDetailView extends StatefulWidget {
   final String? slug;
@@ -22,8 +25,10 @@ class _ProductDetailViewState extends State<ProductDetailView> {
   static const Color _textDark = Color(0xFF1F1B16);
   static const Color _textMuted = Color(0xFF7A7168);
   static const Color _border = Color(0xFFE4DED2);
+  final Map<int, dynamic> _selectedVariants = {};
 
   late final ProductByIdOrSlugController controller;
+  late final RelatedProductController relatedController;
   String get _tag => widget.slug ?? widget.productId!;
   int _selectedImage = 0;
 
@@ -38,11 +43,25 @@ class _ProductDetailViewState extends State<ProductDetailView> {
         controller.fetchById(widget.productId!);
       }
     });
+    relatedController = Get.put(
+      RelatedProductController(),
+      tag: "related_$_tag",
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.slug != null) {
+        controller.fetchBySlug(widget.slug!);
+        relatedController.fetchRelatedProduct(widget.slug!);
+      } else {
+        controller.fetchById(widget.productId!);
+      }
+    });
   }
 
   @override
   void dispose() {
     Get.delete<ProductByIdOrSlugController>(tag: _tag);
+    Get.delete<RelatedProductController>(tag: "related_$_tag");
     super.dispose();
   }
 
@@ -82,13 +101,21 @@ class _ProductDetailViewState extends State<ProductDetailView> {
         }
 
         final item = list;
-        final discount =
-            (item.originalPrice != null &&
-                item.price != null &&
-                item.originalPrice! > item.price!)
-            ? (((item.originalPrice! - item.price!) / item.originalPrice!) *
-                      100)
-                  .round()
+        int totalAdjustment = 0;
+
+        // Sum all selected variant price adjustments
+        for (final option in _selectedVariants.values) {
+          totalAdjustment += (option.priceAdjustment ?? 0) as int;
+        }
+
+        // Final displayed prices
+        final currentPrice = (item.price ?? 0) + totalAdjustment;
+        final originalPrice =
+            (item.originalPrice ?? item.price ?? 0) + totalAdjustment;
+
+        // Calculate discount
+        final discount = originalPrice > currentPrice
+            ? (((originalPrice - currentPrice) / originalPrice) * 100).round()
             : null;
 
         return CustomScrollView(
@@ -132,22 +159,35 @@ class _ProductDetailViewState extends State<ProductDetailView> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 12,
-                            vertical: 6,
+                            vertical: 7,
                           ),
                           decoration: BoxDecoration(
                             color: Colors.red.shade600,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Text(
-                            item.offerBadge!,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.discount_rounded,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                item.offerBadge!.toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
+
                     if (item.images.length > 1)
                       Positioned(
                         bottom: 16,
@@ -260,18 +300,18 @@ class _ProductDetailViewState extends State<ProductDetailView> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          item.price != null ? "₹${item.price}" : "",
+                          "₹$currentPrice",
                           style: const TextStyle(
                             fontSize: 26,
                             fontWeight: FontWeight.bold,
                             color: _primary,
                           ),
                         ),
-                        if (item.originalPrice != null &&
-                            item.originalPrice != item.price) ...[
+
+                        if (originalPrice != currentPrice) ...[
                           const SizedBox(width: 10),
                           Text(
-                            "₹${item.originalPrice}",
+                            "₹$originalPrice",
                             style: const TextStyle(
                               fontSize: 15,
                               color: _textMuted,
@@ -351,7 +391,10 @@ class _ProductDetailViewState extends State<ProductDetailView> {
                     const SizedBox(height: 20),
 
                     if (item.variants.isNotEmpty) ...[
-                      ...item.variants.map((variant) {
+                      ...item.variants.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final variant = entry.value;
+
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 16),
                           child: Column(
@@ -366,29 +409,75 @@ class _ProductDetailViewState extends State<ProductDetailView> {
                                 ),
                               ),
                               const SizedBox(height: 8),
+
                               Wrap(
                                 spacing: 10,
                                 runSpacing: 10,
-                                children: variant.options.map((opt) {
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      border: Border.all(color: _border),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      opt.value ?? "",
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: _textDark,
+                                children: List.generate(
+                                  variant.options.length,
+                                  (optionIndex) {
+                                    final opt = variant.options[optionIndex];
+                                    final isSelected =
+                                        _selectedVariants[index] == opt;
+
+                                    return GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedVariants[index] = opt;
+                                        });
+                                      },
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 200,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 10,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? _primary
+                                              : Colors.white,
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? _primary
+                                                : _border,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          opt.value ?? "",
+                                          style: TextStyle(
+                                            color: isSelected
+                                                ? Colors.white
+                                                : _textDark,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                }).toList(),
+                                    );
+                                  },
+                                ),
                               ),
+
+                              // Show selected option details
+                              // if (_selectedVariants[index] != null) ...[
+                              //   const SizedBox(height: 10),
+                              //   Text(
+                              //     "Selected: ${_selectedVariants[index].value}",
+                              //     style: const TextStyle(
+                              //       fontWeight: FontWeight.w600,
+                              //     ),
+                              //   ),
+                              //   if ((_selectedVariants[index].priceAdjustment ??
+                              //           0) !=
+                              //       0)
+                              //     Text(
+                              //       "Price: ${_selectedVariants[index].priceAdjustment > 0 ? '+' : ''}${_selectedVariants[index].priceAdjustment}",
+                              //       style: const TextStyle(color: Colors.green),
+                              //     ),
+                              // ],
                             ],
                           ),
                         );
@@ -415,6 +504,44 @@ class _ProductDetailViewState extends State<ProductDetailView> {
                       ),
                       const SizedBox(height: 20),
                     ],
+                    const SizedBox(height: 25),
+
+                    const Text(
+                      "Related Products",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+
+                    const SizedBox(height: 15),
+
+                    Obx(() {
+                      if (relatedController.isLoading.value) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      final products = relatedController.product.value.data;
+
+                      if (products.isEmpty) {
+                        return const SizedBox();
+                      }
+
+                      return SizedBox(
+                        height: 310,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: products.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 16),
+                          itemBuilder: (_, index) {
+                            final product1 = products[index];
+
+                            return _relatedProductCard(product1);
+                          },
+                        ),
+                      );
+                    }),
 
                     if (item.specifications != null) ...[
                       const Text(
@@ -713,5 +840,181 @@ class _ProductDetailViewState extends State<ProductDetailView> {
         ),
       );
     }).toList();
+  }
+
+  Widget _relatedProductCard(related.Datum product) {
+    final discount =
+        (product.originalPrice != null &&
+            product.price != null &&
+            product.originalPrice! > product.price!)
+        ? (((product.originalPrice! - product.price!) /
+                      product.originalPrice!) *
+                  100)
+              .round()
+        : null;
+
+    return GestureDetector(
+      onTap: () {
+        Get.to(() => ProductDetailView(slug: product.slug));
+      },
+      child: Container(
+        width: 190,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(.08),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(18),
+                  ),
+                  child: SizedBox(
+                    height: 170,
+                    width: double.infinity,
+                    child: Image.network(
+                      product.images.isNotEmpty ? product.images.first : "",
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: Colors.grey.shade100,
+                        child: const Icon(
+                          Icons.image_not_supported_outlined,
+                          size: 40,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                if (discount != null)
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        "$discount% OFF",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.all(6),
+                      child: Icon(
+                        Icons.favorite_border,
+                        size: 18,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      product.name ?? "",
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        height: 1.3,
+                      ),
+                    ),
+
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.star_rounded,
+                          size: 16,
+                          color: Colors.amber,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          "${product.rating ?? 0}",
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          "${product.reviews ?? 0} Reviews",
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "₹${product.price}",
+                          style: const TextStyle(
+                            color: _primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        if (product.originalPrice != product.price)
+                          Text(
+                            "₹${product.originalPrice}",
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              decoration: TextDecoration.lineThrough,
+                              fontSize: 12,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
