@@ -3,7 +3,9 @@ import 'package:jewellens/core/theme/app_color.dart';
 import 'package:jewellens/features/category/views/%20category_detail_view.dart';
 import 'package:jewellens/features/category/views/categories_view.dart';
 import 'package:jewellens/features/home/views/landing_page.dart';
-import 'package:jewellens/features/profile/views/profile_view.dart';
+import 'package:jewellens/features/product/views/product_list_view.dart';
+import 'package:jewellens/features/profile/views/profile_page.dart';
+
 // import wishlist_view, cart_view, profile_view when ready
 
 class MainNavView extends StatefulWidget {
@@ -18,10 +20,10 @@ class _MainNavViewState extends State<MainNavView> {
 
   final List<Widget> _tabs = const [
     HomeView(),
-    CategoriesView(),
+    ProductListView(),
     Center(child: Text("Wishlist")), // placeholder
     Center(child: Text("Cart")), // placeholder
-    ProfileView(), // placeholder
+    ProfilePage(), // placeholder
   ];
 
   @override
@@ -58,7 +60,7 @@ class _MainNavViewState extends State<MainNavView> {
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.grid_view_rounded),
-              label: "Categories",
+              label: "Products",
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.favorite_border),

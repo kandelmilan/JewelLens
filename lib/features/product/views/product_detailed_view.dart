@@ -4,9 +4,10 @@ import 'package:jewellens/core/routers/app_routes.dart';
 import 'package:jewellens/core/theme/app_color.dart';
 import 'package:jewellens/features/product/controllers/product_by_id_or_slug_controller.dart';
 import 'package:jewellens/features/product/controllers/related_product_controller.dart';
-import 'package:jewellens/features/category/models/categories_model.dart';
 import 'package:jewellens/features/product/models/related_product_model.dart'
     as related;
+import 'package:jewellens/features/tryon/models/tryon_category.dart';
+import 'package:jewellens/features/tryon/views/virtual_tryon_teaser.dart';
 
 class ProductDetailView extends StatefulWidget {
   final String? slug;
@@ -34,13 +35,6 @@ class _ProductDetailViewState extends State<ProductDetailView> {
   void initState() {
     super.initState();
     controller = Get.put(ProductByIdOrSlugController(), tag: _tag);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.slug != null) {
-        controller.fetchBySlug(widget.slug!);
-      } else {
-        controller.fetchById(widget.productId!);
-      }
-    });
     relatedController = Get.put(
       RelatedProductController(),
       tag: "related_$_tag",
@@ -61,6 +55,21 @@ class _ProductDetailViewState extends State<ProductDetailView> {
     Get.delete<ProductByIdOrSlugController>(tag: _tag);
     Get.delete<RelatedProductController>(tag: "related_$_tag");
     super.dispose();
+  }
+
+  TryOnCategory _inferCategory(String? categoryName) {
+    final name = (categoryName ?? '').toLowerCase();
+    if (name.contains('earring')) return TryOnCategory.earrings;
+    if (name.contains('necklace') ||
+        name.contains('chain') ||
+        name.contains('pendant')) {
+      return TryOnCategory.necklace;
+    }
+    if (name.contains('ring')) return TryOnCategory.ring;
+    if (name.contains('bracelet') || name.contains('bangle')) {
+      return TryOnCategory.bracelet;
+    }
+    return TryOnCategory.other;
   }
 
   @override
@@ -489,8 +498,21 @@ class _ProductDetailViewState extends State<ProductDetailView> {
                       ),
                       const SizedBox(height: 20),
                     ],
-                    const SizedBox(height: 25),
 
+                    // ── Virtual Try-On ────────────────────────────────
+                    // Fills the empty space between Description and
+                    // Related Products with an interactive try-on card.
+                    VirtualTryOnTeaser(
+                      productId: item.id ?? '',
+                      productImage: item.images.isNotEmpty
+                          ? item.images.first
+                          : null,
+                      productName: item.name,
+                      category: _inferCategory(item.category?.name),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // ──────────────────────────────────────────────────
                     const Text(
                       "Related Products",
                       style: TextStyle(

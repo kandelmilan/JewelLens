@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:jewellens/core/theme/app_color.dart';
 import 'package:jewellens/features/home/widgets/brand_partner_widget.dart';
 import 'package:jewellens/features/category/widgets/categories_widget.dart';
@@ -6,6 +7,7 @@ import 'package:jewellens/features/product/widgets/featured_products_widget.dart
 import 'package:jewellens/features/home/widgets/heroslider_widget.dart';
 import 'package:jewellens/features/home/widgets/instagram_post_widget.dart';
 import 'package:jewellens/features/home/widgets/list_occasions_widget.dart';
+import 'package:jewellens/features/profile/controllers/user_controller.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -15,6 +17,20 @@ class HomeView extends StatefulWidget {
 }
 
 class _HomeViewState extends State<HomeView> {
+  final UserController userController = Get.find<UserController>();
+
+  String getGreeting() {
+    final hour = DateTime.now().hour;
+
+    if (hour < 12) {
+      return "Good Morning";
+    } else if (hour < 17) {
+      return "Good Afternoon";
+    } else {
+      return "Good Evening";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -28,38 +44,54 @@ class _HomeViewState extends State<HomeView> {
 
         title: Row(
           children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: AppColors.primary.withOpacity(.15),
-              child: const Icon(
-                Icons.diamond_outlined,
-                color: AppColors.primary,
-              ),
-            ),
+            Obx(() {
+              final profile = userController.user.value?.data;
 
+              return CircleAvatar(
+                radius: 24,
+                backgroundColor: AppColors.primary.withOpacity(.15),
+                backgroundImage:
+                    profile?.avatar != null && profile!.avatar!.isNotEmpty
+                    ? NetworkImage(profile.avatar!)
+                    : null,
+                child:
+                    profile == null ||
+                        profile.avatar == null ||
+                        profile.avatar!.isEmpty
+                    ? const Icon(Icons.person, color: AppColors.primary)
+                    : null,
+              );
+            }),
             const SizedBox(width: 14),
+            Expanded(
+              child: Obx(() {
+                final profile = userController.user.value?.data;
 
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Good Morning 👋",
-                    style: TextStyle(fontSize: 13, color: AppColors.textMuted),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    "Milan",
-                    style: TextStyle(
-                      fontSize: 22,
-                      color: AppColors.textDark,
-                      fontWeight: FontWeight.bold,
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "${getGreeting()} 👋",
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(height: 2),
+                    Text(
+                      profile?.name ?? "Guest",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        color: AppColors.textDark,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                );
+              }),
             ),
-
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,

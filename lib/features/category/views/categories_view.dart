@@ -3,7 +3,7 @@ import 'package:get/get.dart';
 import 'package:jewellens/core/routers/app_routes.dart';
 import 'package:jewellens/core/theme/app_color.dart';
 import 'package:jewellens/features/category/controllers/category_controller.dart';
-import 'package:jewellens/features/category/views/%20category_detail_view.dart';
+// import 'package:jewellens/features/category/views/category_detail_view.dart';
 
 class CategoriesView extends StatefulWidget {
   const CategoriesView({super.key});

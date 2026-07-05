@@ -6,6 +6,7 @@ import 'package:jewellens/features/category/views/%20category_detail_view.dart';
 import 'package:jewellens/features/home/views/landing_page.dart';
 import 'package:jewellens/features/main_nav/main_nav_view.dart';
 import 'package:jewellens/features/onboarding/onboarding_view.dart';
+import 'package:jewellens/features/profile/views/profile_page.dart';
 import 'package:jewellens/features/splash/splash_view.dart';
 import 'package:jewellens/features/category/views/categories_view.dart';
 import 'package:jewellens/features/product/views/product_detailed_view.dart';
@@ -56,5 +57,6 @@ class AppPages {
         );
       },
     ),
+    GetPage(name: AppRoutes.profilepage, page: () => const ProfilePage()),
   ];
 }

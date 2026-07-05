@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:jewellens/features/auth/models/login_model.dart';
 import 'package:jewellens/features/auth/models/register_model.dart';
 import 'package:jewellens/features/auth/repositories/auth_repository.dart';
+import 'package:jewellens/features/profile/controllers/user_controller.dart';
 import 'package:jewellens/services/inactivity/inactivity_service.dart';
 import 'package:jewellens/services/storages/token_storage.dart';
 import 'package:jewellens/features/auth/views/login_view.dart';
@@ -39,6 +40,12 @@ class AuthController extends GetxController {
 
   var obscureConfirm = true.obs;
   void toggleConfirmPassword() => obscureConfirm.value = !obscureConfirm.value;
+  void clearLoginForm() {
+    email.clear();
+    password.clear();
+    remember.value = false;
+    loginFormKey.currentState?.reset();
+  }
 
   Future<void> login() async {
     try {
@@ -69,29 +76,41 @@ class AuthController extends GetxController {
 
         await TokenStorage.instance.saveAccessToken(token);
 
-        debugPrint("Token saved successfully");
-        Get.snackbar(
-          "Success",
-          loginUser.value.message ?? "Login Successful",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-          duration: const Duration(seconds: 2),
-        );
+        // Verify the token was actually saved
+        final savedToken = await TokenStorage.instance.getAccessToken();
 
-        email.clear();
-        password.clear();
-        loginFormKey.currentState?.reset();
-        Get.offAll(() => const MainNavView());
-        InactivityService.instance.startWatching();
-      } else {
-        Get.snackbar(
-          "Error",
-          loginUser.value.message ?? "Login Failed",
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
+        debugPrint("Received Token : $token");
+        debugPrint("Saved Token    : $savedToken");
+
+        if (savedToken != null && savedToken.isNotEmpty) {
+          Get.snackbar(
+            "Success",
+            loginUser.value.message ?? "Login Successful",
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.green,
+            colorText: Colors.white,
+            duration: const Duration(seconds: 2),
+          );
+
+          email.clear();
+          password.clear();
+          loginFormKey.currentState?.reset();
+          if (Get.isRegistered<UserController>()) {
+            await Get.find<UserController>().getUser();
+          }
+
+          InactivityService.instance.startWatching();
+
+          Get.offAll(() => const MainNavView());
+        } else {
+          Get.snackbar(
+            "Login Error",
+            "Failed to save access token.",
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: Colors.red,
+            colorText: Colors.white,
+          );
+        }
       }
     } catch (e, stack) {
       debugPrint("ERROR: $e");
@@ -205,9 +224,83 @@ class AuthController extends GetxController {
   }
 
   Future<void> logout() async {
+    final bool? confirm = await Get.dialog<bool>(
+      Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircleAvatar(
+                radius: 30,
+                backgroundColor: Color(0xFFFFEBEE),
+                child: Icon(Icons.logout_rounded, color: Colors.red, size: 30),
+              ),
+
+              const SizedBox(height: 20),
+
+              const Text(
+                "Logout",
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+
+              const SizedBox(height: 10),
+
+              const Text(
+                "Are you sure you want to logout from your account?",
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 24),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(result: false),
+                      child: const Text("Cancel"),
+                    ),
+                  ),
+
+                  const SizedBox(width: 12),
+
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => Get.back(result: true),
+                      child: const Text("Logout"),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (confirm != true) return;
+
     InactivityService.instance.stopWatching();
+
     await TokenStorage.instance.clear();
+    clearLoginForm();
+    // Clear cached user profile
+    if (Get.isRegistered<UserController>()) {
+      Get.find<UserController>().user.value = null;
+    }
+
     Get.offAll(() => const LoginView());
+
+    Get.snackbar(
+      "Logged Out",
+      "You have been logged out successfully.",
+      snackPosition: SnackPosition.BOTTOM,
+    );
   }
 
   @override

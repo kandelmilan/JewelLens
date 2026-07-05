@@ -19,6 +19,10 @@ dependencies:
   cached_network_image: ^3.4.1
   url_launcher: ^6.3.0
   flutter_secure_storage: ^9.2.2
+  image_picker: ^1.1.2
+  camera: ^0.10.6
+  google_mlkit_face_detection: ^0.13.1
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:

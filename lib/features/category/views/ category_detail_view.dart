@@ -4,6 +4,24 @@ import 'package:jewellens/core/theme/app_color.dart';
 import 'package:jewellens/features/category/controllers/category_by_id_controller.dart';
 import 'package:jewellens/features/category/controllers/category_by_slug_controller.dart';
 
+/// Small internal DTO so the view only ever deals with ONE shape of data,
+/// regardless of whether it came from the "by id" or "by slug" endpoint.
+class _CategoryViewData {
+  final String? name;
+  final String? slug;
+  final String? icon;
+  final String? status;
+  final DateTime? createdAt;
+
+  const _CategoryViewData({
+    this.name,
+    this.slug,
+    this.icon,
+    this.status,
+    this.createdAt,
+  });
+}
+
 class CategoryDetailView extends StatefulWidget {
   final int? categoryId;
   final String? slug;
@@ -58,6 +76,36 @@ class _CategoryDetailViewState extends State<CategoryDetailView> {
     super.dispose();
   }
 
+  bool get _isLoading => _useSlug
+      ? _bySlugController!.isLoading.value
+      : _byIdController!.isLoading.value;
+
+  /// Single place where the "which controller?" branching happens.
+  /// Everything below this only ever touches [_CategoryViewData].
+  _CategoryViewData? get _data {
+    if (_useSlug) {
+      final d = _bySlugController!.categoryBySlug.value.data;
+      if (d == null) return null;
+      return _CategoryViewData(
+        name: d.name,
+        slug: d.slug,
+        icon: d.icon,
+        status: d.status,
+        createdAt: d.createdAt,
+      );
+    } else {
+      final d = _byIdController!.categoryById.value.data;
+      if (d == null) return null;
+      return _CategoryViewData(
+        name: d.name,
+        slug: d.slug,
+        icon: d.icon,
+        status: d.status,
+        createdAt: d.createdAt,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -77,140 +125,121 @@ class _CategoryDetailViewState extends State<CategoryDetailView> {
         ),
       ),
       body: Obx(() {
-        final isLoading = _useSlug
-            ? _bySlugController!.isLoading.value
-            : _byIdController!.isLoading.value;
-
-        if (isLoading) {
+        if (_isLoading) {
           return const _DetailSkeleton();
         }
 
-        final String? name;
-        final String? slug;
-        final String? icon;
-        final String? status;
-        final DateTime? createdAt;
-
-        if (_useSlug) {
-          final d = _bySlugController!.categoryBySlug.value.data;
-          if (d == null) {
-            return _EmptyState(onRetry: _fetch);
-          }
-          name = d.name;
-          slug = d.slug;
-          icon = d.icon;
-          status = d.status;
-          createdAt = d.createdAt;
-        } else {
-          final d = _byIdController!.categoryById.value.data;
-          if (d == null) {
-            return _EmptyState(onRetry: _fetch);
-          }
-          name = d.name;
-          slug = d.slug;
-          icon = d.icon;
-          status = d.status;
-          createdAt = d.createdAt;
+        final data = _data;
+        if (data == null) {
+          return _EmptyState(onRetry: _fetch);
         }
 
-        final isActive = (status ?? "").toLowerCase() == "active";
+        final isActive = (data.status ?? "").toLowerCase() == "active";
 
-        return SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          child: Column(
-            children: [
-              _CategoryAvatar(icon: icon),
-              const SizedBox(height: 20),
-              Text(
-                name ?? "Untitled category",
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
-                  letterSpacing: -0.3,
+        return RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () async => _fetch(),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+            child: Column(
+              children: [
+                _CategoryAvatar(icon: data.icon),
+                const SizedBox(height: 20),
+                Text(
+                  data.name ?? "Untitled category",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textDark,
+                    letterSpacing: -0.3,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 6),
-              if (slug != null && slug.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(.08),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    slug,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
+                const SizedBox(height: 6),
+                if (data.slug != null && data.slug!.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
                     ),
-                  ),
-                ),
-              const SizedBox(height: 24),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(.03),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(.08),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _infoRow(
-                      "Status",
-                      valueWidget: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            margin: const EdgeInsets.only(right: 6),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isActive
-                                  ? AppColors.success
-                                  : AppColors.textMuted,
-                            ),
-                          ),
-                          Text(
-                            status ?? "-",
-                            style: TextStyle(
-                              color: isActive
-                                  ? AppColors.success
-                                  : AppColors.textDark,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                    child: Text(
+                      data.slug!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const Divider(height: 24, color: AppColors.border),
-                    _infoRow(
-                      "Created",
-                      value: createdAt != null
-                          ? "${createdAt.day.toString().padLeft(2, '0')}/${createdAt.month.toString().padLeft(2, '0')}/${createdAt.year}"
-                          : "-",
-                    ),
-                  ],
+                  ),
+                const SizedBox(height: 24),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppColors.border),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(.03),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _infoRow(
+                        "Status",
+                        valueWidget: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              margin: const EdgeInsets.only(right: 6),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isActive
+                                    ? AppColors.success
+                                    : AppColors.textMuted,
+                              ),
+                            ),
+                            Text(
+                              data.status ?? "-",
+                              style: TextStyle(
+                                color: isActive
+                                    ? AppColors.success
+                                    : AppColors.textDark,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 24, color: AppColors.border),
+                      _infoRow(
+                        "Created",
+                        value: data.createdAt != null
+                            ? "${data.createdAt!.day.toString().padLeft(2, '0')}/"
+                                  "${data.createdAt!.month.toString().padLeft(2, '0')}/"
+                                  "${data.createdAt!.year}"
+                            : "-",
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       }),

@@ -27,6 +27,14 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
+	<key>NSCameraUsageDescription</key>
+	<key>NSCameraUsageDescription</key>
+	<string>We need camera access so you can take a photo to try on jewellery.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need photo library access so you can select a photo to try on jewellery.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>We need photo library access to save your try-on results.</string>
+	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
