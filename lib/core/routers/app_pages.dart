@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:jewellens/core/routers/app_routes.dart';
 import 'package:jewellens/features/auth/views/login_view.dart';
 import 'package:jewellens/features/auth/views/register_view.dart';
+import 'package:jewellens/features/cart/views/cart_view.dart';
 import 'package:jewellens/features/category/views/%20category_detail_view.dart';
 import 'package:jewellens/features/home/views/landing_page.dart';
 import 'package:jewellens/features/main_nav/main_nav_view.dart';
@@ -58,5 +59,6 @@ class AppPages {
       },
     ),
     GetPage(name: AppRoutes.profilepage, page: () => const ProfilePage()),
+    GetPage(name: AppRoutes.cartpage, page: () => const CartView()),
   ];
 }

@@ -9,7 +9,7 @@ class InactivityService extends GetxService {
   static InactivityService get instance => Get.find<InactivityService>();
 
   Timer? _timer;
-  final Duration timeout = const Duration(minutes: 1);
+  final Duration timeout = const Duration(minutes: 10);
 
   void startWatching() {
     _resetTimer();

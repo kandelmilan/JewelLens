@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jewellens/core/routers/app_routes.dart';
 import 'package:jewellens/core/theme/app_color.dart';
+import 'package:jewellens/features/cart/controllers/cart_controllers.dart';
+import 'package:jewellens/features/cart/models/cart_model.dart' as cart_models;
 import 'package:jewellens/features/product/controllers/product_by_id_or_slug_controller.dart';
 import 'package:jewellens/features/product/controllers/related_product_controller.dart';
 import 'package:jewellens/features/product/models/related_product_model.dart'
@@ -70,6 +72,75 @@ class _ProductDetailViewState extends State<ProductDetailView> {
       return TryOnCategory.bracelet;
     }
     return TryOnCategory.other;
+  }
+
+  /// Grabs the already-registered CartController if one exists (e.g. the
+  /// bottom-nav's CartView already put one), otherwise creates it. Avoids
+  /// resetting cart state just because this screen was opened.
+  CartController get _cartController {
+    if (Get.isRegistered<CartController>()) {
+      return Get.find<CartController>();
+    }
+    return Get.put(CartController());
+  }
+
+  void _handleAddToCart(dynamic item) {
+    if (item.inStock == false) {
+      Get.snackbar('Out of Stock', 'This item is currently unavailable.');
+      return;
+    }
+
+    // Require a choice for every variant group before adding.
+    if (item.variants.isNotEmpty) {
+      for (int i = 0; i < item.variants.length; i++) {
+        if (!_selectedVariants.containsKey(i)) {
+          final variant = item.variants[i];
+          Get.snackbar(
+            'Select an option',
+            'Please choose ${variant.label ?? variant.type ?? 'an option'} before adding to cart.',
+          );
+          return;
+        }
+      }
+    }
+
+    final selectedVariants = <cart_models.SelectedVariant>[];
+    _selectedVariants.forEach((index, option) {
+      final variantType = item.variants[index].type as String?;
+      selectedVariants.add(
+        cart_models.SelectedVariant(type: variantType, value: option.value),
+      );
+    });
+
+    final product = cart_models.Product.minimal(
+      id: item.id ?? '',
+      name: item.name,
+      slug: item.slug,
+      price: item.price,
+      originalPrice: item.originalPrice,
+      images: List<String>.from(item.images ?? const []),
+      inStock: item.inStock,
+      stockCount: item.stockCount,
+      freeShipping: item.freeShipping,
+      codAvailable: item.codAvailable,
+      emiAvailable: item.emiAvailable,
+      offerBadge: item.offerBadge,
+      rating: item.rating,
+      reviews: item.reviews,
+    );
+
+    final newItem = cart_models.CartItem(
+      product: product,
+      quantity: 1,
+      selectedVariants: selectedVariants,
+    );
+
+    _cartController.addToCart(newItem);
+
+    Get.snackbar(
+      'Added to Bag',
+      '${item.name ?? 'Item'} has been added to your bag.',
+    );
   }
 
   @override
@@ -502,14 +573,14 @@ class _ProductDetailViewState extends State<ProductDetailView> {
                     // ── Virtual Try-On ────────────────────────────────
                     // Fills the empty space between Description and
                     // Related Products with an interactive try-on card.
-                    VirtualTryOnTeaser(
-                      productId: item.id ?? '',
-                      productImage: item.images.isNotEmpty
-                          ? item.images.first
-                          : null,
-                      productName: item.name,
-                      category: _inferCategory(item.category?.name),
-                    ),
+                    // VirtualTryOnTeaser(
+                    //   productId: item.id ?? '',
+                    //   productImage: item.images.isNotEmpty
+                    //       ? item.images.first
+                    //       : null,
+                    //   productName: item.name,
+                    //   category: _inferCategory(item.category?.name),
+                    // ),
                     const SizedBox(height: 20),
 
                     // ──────────────────────────────────────────────────
@@ -696,49 +767,62 @@ class _ProductDetailViewState extends State<ProductDetailView> {
               ),
             ],
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.primary),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+          child: Obx(() {
+            final data = controller.product.value.data;
+            final inStock = data?.inStock != false;
+
+            return Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.primary),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                  ),
-                  onPressed: () {},
-                  child: const Text(
-                    "Add to Cart",
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () {},
-                  child: const Text(
-                    "Buy Now",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
+                    onPressed: (data == null || !inStock)
+                        ? null
+                        : () => _handleAddToCart(data),
+                    child: const Text(
+                      "Add to Cart",
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: (data == null || !inStock)
+                        ? null
+                        : () {
+                            _handleAddToCart(data);
+                            // TODO: navigate straight to checkout for a
+                            // true "Buy Now" flow instead of just adding.
+                          },
+                    child: const Text(
+                      "Buy Now",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
         ),
       ),
     );
@@ -868,7 +952,8 @@ class _ProductDetailViewState extends State<ProductDetailView> {
 
     return GestureDetector(
       onTap: () {
-        Get.toNamed(AppRoutes.productDetail, arguments: {'slug': product.slug});
+        // Get.toNamed(AppRoutes.productDetail, arguments: {'slug': product.slug});
+        Get.off(() => ProductDetailView(slug: product.slug));
       },
       child: Container(
         width: 190,

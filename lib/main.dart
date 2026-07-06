@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_navigation/get_navigation.dart';
 import 'package:jewellens/core/bindings/controller_binding.dart';
 import 'package:jewellens/core/routers/app_pages.dart';
 import 'package:jewellens/core/routers/app_routes.dart';

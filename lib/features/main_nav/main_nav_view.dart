@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:jewellens/core/theme/app_color.dart';
+import 'package:jewellens/features/cart/views/cart_view.dart';
 import 'package:jewellens/features/category/views/%20category_detail_view.dart';
 import 'package:jewellens/features/category/views/categories_view.dart';
 import 'package:jewellens/features/home/views/landing_page.dart';
+import 'package:jewellens/features/orders/views/order_list_view.dart';
 import 'package:jewellens/features/product/views/product_list_view.dart';
 import 'package:jewellens/features/profile/views/profile_page.dart';
 
@@ -18,11 +20,13 @@ class MainNavView extends StatefulWidget {
 class _MainNavViewState extends State<MainNavView> {
   int currentIndex = 0;
 
-  final List<Widget> _tabs = const [
+  final List<Widget> _tabs = [
     HomeView(),
     ProductListView(),
-    Center(child: Text("Wishlist")), // placeholder
-    Center(child: Text("Cart")), // placeholder
+    OrderListView(),
+    // OrderListView(),
+    // Center(child: Text("Cart")),
+    CartView(),
     ProfilePage(), // placeholder
   ];
 
@@ -63,8 +67,10 @@ class _MainNavViewState extends State<MainNavView> {
               label: "Products",
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.favorite_border),
-              label: "Wishlist",
+              icon: Icon(
+                Icons.receipt_long_outlined,
+              ), // was Icons.favorite_border
+              label: "Orders",
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.shopping_bag_outlined),

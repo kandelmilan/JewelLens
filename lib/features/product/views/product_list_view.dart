@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jewellens/core/routers/app_routes.dart';
 import 'package:jewellens/core/theme/app_color.dart';
+import 'package:jewellens/features/cart/controllers/cart_controllers.dart';
+import 'package:jewellens/features/cart/models/cart_model.dart' as cart_models;
 import 'package:jewellens/features/category/controllers/category_controller.dart';
 import 'package:jewellens/features/product/controllers/products_controller.dart';
 
@@ -64,7 +66,7 @@ class _ProductGridSectionState extends State<ProductGridSection> {
     _searchController.dispose();
     Get.delete<ProductsController>(tag: widget.tag);
     if (widget.showCategoryFilter) {
-      Get.delete<CategoryController>(tag: "${widget.tag}_categories");
+      Get.delete<CategoryController>(tag: "${widget.tag}_categories ");
     }
     super.dispose();
   }
@@ -122,7 +124,7 @@ class _ProductGridSectionState extends State<ProductGridSection> {
                 padding: EdgeInsets.symmetric(horizontal: widget.padding.left),
                 children: [
                   _CategoryChip(
-                    label: "All",
+                    label: "All ",
                     selected: _selectedCategorySlug == null,
                     onTap: () => _onCategoryTap(null),
                   ),
@@ -297,6 +299,65 @@ class _ProductCard extends StatelessWidget {
 
   const _ProductCard({required this.item});
 
+  CartController get _cartController {
+    if (Get.isRegistered<CartController>()) {
+      return Get.find<CartController>();
+    }
+    return Get.put(CartController());
+  }
+
+  bool get _hasVariants {
+    try {
+      return (item.variants as List).isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void _handleAddToCart(BuildContext context) {
+    if (item.inStock == false) {
+      Get.snackbar('Out of Stock', 'This item is currently unavailable.');
+      return;
+    }
+
+    // Variants (size/color/etc.) need an explicit choice — can't guess
+    // one here, so send the user to the detail page to pick instead.
+    if (_hasVariants) {
+      Get.toNamed(AppRoutes.productDetail, arguments: {'slug': item.slug});
+      return;
+    }
+
+    final product = cart_models.Product.minimal(
+      id: item.id ?? '',
+      name: item.name,
+      slug: item.slug,
+      price: item.price,
+      originalPrice: item.originalPrice,
+      images: List<String>.from(item.images ?? const []),
+      inStock: item.inStock,
+      stockCount: item.stockCount,
+      freeShipping: item.freeShipping,
+      codAvailable: item.codAvailable,
+      emiAvailable: item.emiAvailable,
+      offerBadge: item.offerBadge,
+      rating: item.rating,
+      reviews: item.reviews,
+    );
+
+    _cartController.addToCart(
+      cart_models.CartItem(
+        product: product,
+        quantity: 1,
+        selectedVariants: const [],
+      ),
+    );
+
+    Get.snackbar(
+      'Added to Bag',
+      '${item.name ?? 'Item'} has been added to your bag.',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool hasDiscount =
@@ -305,6 +366,7 @@ class _ProductCard extends StatelessWidget {
         ? (((item.originalPrice - item.price) / item.originalPrice) * 100)
               .round()
         : null;
+    final bool outOfStock = item.inStock == false;
 
     return GestureDetector(
       onTap: () {
@@ -396,6 +458,21 @@ class _ProductCard extends StatelessWidget {
                         ),
                       ),
                     ),
+                  if (outOfStock)
+                    Positioned.fill(
+                      child: Container(
+                        color: Colors.black.withOpacity(.45),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          "Out of Stock",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
                   Positioned(
                     top: 8,
                     right: 8,
@@ -422,6 +499,34 @@ class _ProductCard extends StatelessWidget {
                         onPressed: () {
                           // TODO: wire up to your wishlist controller
                         },
+                      ),
+                    ),
+                  ),
+                  // Quick "Add to Cart" action, bottom-right of the image.
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: Material(
+                      color: outOfStock
+                          ? Colors.grey.shade300
+                          : AppColors.primary,
+                      shape: const CircleBorder(),
+                      elevation: 2,
+                      child: InkWell(
+                        customBorder: const CircleBorder(),
+                        onTap: outOfStock
+                            ? null
+                            : () => _handleAddToCart(context),
+                        child: Padding(
+                          padding: const EdgeInsets.all(7),
+                          child: Icon(
+                            _hasVariants
+                                ? Icons.chevron_right_rounded
+                                : Icons.add_shopping_cart_rounded,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
                   ),
