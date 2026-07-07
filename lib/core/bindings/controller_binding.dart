@@ -13,6 +13,7 @@ import 'package:jewellens/features/profile/controllers/user_controller.dart';
 import 'package:jewellens/features/profile/repositories/user_repository.dart';
 import 'package:jewellens/features/profile/services/user_services.dart';
 import 'package:jewellens/features/tryon/controllers/tryon_controller.dart';
+import 'package:jewellens/features/tryon/repository/local_tryon_repository.dart';
 import 'package:jewellens/features/tryon/repository/tryon_repository.dart';
 import 'package:jewellens/features/tryon/services/tryon_services.dart';
 
@@ -31,10 +32,10 @@ class ControllerBinding extends Bindings {
     );
     Get.put<BrandPartnerController>(BrandPartnerController(), permanent: true);
     Get.put<CategoryController>(CategoryController(), permanent: true);
-    // Get.put<TryOnController>(
-    //   TryOnController(TryOnRepository(TryOnService())),
-    //   permanent: true,
-    // );
+    Get.put<TryOnController>(
+      TryOnController(LocalTryOnRepository()),
+      permanent: true,
+    );
     // Profile
     Get.put<UserService>(UserService(), permanent: true);
 

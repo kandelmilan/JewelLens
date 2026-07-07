@@ -570,17 +570,25 @@ class _ProductDetailViewState extends State<ProductDetailView> {
                       const SizedBox(height: 20),
                     ],
 
-                    // ── Virtual Try-On ────────────────────────────────
-                    // Fills the empty space between Description and
-                    // Related Products with an interactive try-on card.
-                    // VirtualTryOnTeaser(
-                    //   productId: item.id ?? '',
-                    //   productImage: item.images.isNotEmpty
-                    //       ? item.images.first
-                    //       : null,
-                    //   productName: item.name,
-                    //   category: _inferCategory(item.category?.name),
-                    // ),
+                    Builder(
+                      builder: (context) {
+                        final category = _inferCategory(item.category?.name);
+                        final isSupported =
+                            category == TryOnCategory.earrings ||
+                            category == TryOnCategory.necklace;
+
+                        if (!isSupported) return const SizedBox.shrink();
+
+                        return VirtualTryOnTeaser(
+                          productId: item.id ?? '',
+                          productImage: item.images.isNotEmpty
+                              ? item.images.first
+                              : null,
+                          productName: item.name,
+                          category: category,
+                        );
+                      },
+                    ),
                     const SizedBox(height: 20),
 
                     // ──────────────────────────────────────────────────
